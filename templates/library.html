@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Kitaplık - Kitap Takip{% endblock %}
+{% block content %}
+<ul class="nav nav-pills shelf-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if active_shelf == 'okunacak' %}active{% endif %}" href="?raf=okunacak">Okunacak <span>{{ counts.okunacak }}</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_shelf == 'okunuyor' %}active{% endif %}" href="?raf=okunuyor">Okunuyor <span>{{ counts.okunuyor }}</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_shelf == 'okundu' %}active{% endif %}" href="?raf=okundu">Okundu <span>{{ counts.okundu }}</span></a>
+    </li>
+</ul>
+
+{% if not books %}
+<div class="empty-state">
+    <p>Bu rafta kitap yok.</p>
+    <a class="btn btn-primary" href="{{ url_for('search') }}">Kitap Ara</a>
+</div>
+{% else %}
+<div class="book-grid">
+    {% for book in books %}
+    <article class="book-card">
+        <div class="book-cover">
+            {% if book.cover_path %}
+                <img src="{{ url_for('static', filename=book.cover_path.replace('static/', '')) }}" alt="{{ book.title }}">
+            {% else %}
+                <div class="default-cover"><i class="bi bi-book"></i></div>
+            {% endif %}
+        </div>
+        <div class="book-card-body">
+            <span class="status-badge {{ book.status }}">{{ {'okunacak':'Okunacak','okunuyor':'Okunuyor','okundu':'Okundu'}[book.status] }}</span>
+            <h2>{{ book.title }}</h2>
+            <p class="author">{{ book.author }}</p>
+            {% if book.pages %}
+            <div class="progress-wrap">
+                <div class="progress">
+                    <div class="progress-bar" style="width: {{ book.progress }}%"></div>
+                </div>
+                <small>{{ book.current_page }} / {{ book.pages }} sayfa</small>
+            </div>
+            {% endif %}
+            {% if book.estimate %}
+            <p class="estimate"><i class="bi bi-lightning-charge"></i> Bu hızla {{ book.estimate }} günde bitirirsin</p>
+            {% endif %}
+            {% if book.product_url %}
+            <a class="product-link" href="{{ book.product_url }}" target="_blank" rel="noopener">Kitapyurdu'nda gör</a>
+            {% endif %}
+
+            {% if book.status != 'okunacak' %}
+            <form class="reading-form" action="{{ url_for('add_reading_log', book_id=book.id) }}" method="post">
+                <label class="form-label">Bugün okudum</label>
+                <div class="input-group">
+                    <input class="form-control" name="current_page" type="number" min="{{ book.current_page }}" max="{{ book.pages or '' }}" value="{{ book.current_page }}" required>
+                    <button class="btn btn-primary" type="submit">Kaydet</button>
+                </div>
+            </form>
+            {% endif %}
+            {% if book.last_log %}
+            <form action="{{ url_for('delete_reading_log', book_id=book.id, log_id=book.last_log.id) }}" method="post">
+                <button class="btn btn-link btn-sm text-danger p-0" type="submit">Son kaydı sil</button>
+            </form>
+            {% endif %}
+
+            {% if book.status == 'okundu' %}
+            <form class="rating-form" action="{{ url_for('update_rating', book_id=book.id) }}" method="post">
+                <label class="form-label">Puan</label>
+                <div class="stars">
+                    {% for star in range(1,6) %}
+                    <label><input type="radio" name="rating" value="{{ star }}" {% if book.rating == star %}checked{% endif %}><span>★</span></label>
+                    {% endfor %}
+                </div>
+                <textarea class="form-control" name="note" rows="2" placeholder="Kısa not">{{ book.note or '' }}</textarea>
+                <button class="btn btn-outline-primary btn-sm mt-2" type="submit">Kaydet</button>
+            </form>
+            {% endif %}
+
+            <form class="shelf-form" action="{{ url_for('change_shelf', book_id=book.id) }}" method="post">
+                <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
+                    <option value="okunacak" {% if book.status == 'okunacak' %}selected{% endif %}>Okunacak</option>
+                    <option value="okunuyor" {% if book.status == 'okunuyor' %}selected{% endif %}>Okunuyor</option>
+                    <option value="okundu" {% if book.status == 'okundu' %}selected{% endif %}>Okundu</option>
+                </select>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
